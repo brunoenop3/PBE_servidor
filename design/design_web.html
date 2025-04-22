@@ -65,6 +65,13 @@
     <button id="btnTimetables">Cargar Horarios</button>
     <button id="btnTasks">Cargar Tareas</button>
     <button id="btnMarks">Cargar Notas</button>
+
+    <!-- Barra de consulta libre -->
+    <div id="query-section" style="margin-top: 20px;">
+      <input type="text" id="query-input" placeholder="Escribe tu consulta libre (ej: tasks?date[gte]=now&limit=1)">
+      <button id="btnQuery">Consultar</button>
+    </div>
+
     <div id="contenedor"></div>
   </div>
 
@@ -85,9 +92,7 @@
 
     function fetchUserName(uid) {
       fetch(`http://localhost:3000/user/${uid}`, {
-        headers: {
-          'uid': uid
-        }
+        headers: { 'uid': uid }
       })
         .then(res => res.json())
         .then(data => {
@@ -145,7 +150,7 @@
           const td = document.createElement('td');
           let val = item[header];
           if (header === 'date' && val) {
-            val = new Date(val).toISOString().split('T')[0]; // Solo fecha
+            val = new Date(val).toISOString().split('T')[0];
           }
           td.textContent = val;
           fila.appendChild(td);
@@ -179,6 +184,28 @@
       .addEventListener('click', () => fetchData('tasks'));
     document.getElementById('btnMarks')
       .addEventListener('click', () => fetchData('marks'));
+
+    // Nueva funcionalidad: consulta libre
+    document.getElementById('btnQuery')
+      .addEventListener('click', () => {
+        const customQuery = document.getElementById('query-input').value.trim();
+        if (!customQuery) {
+          alert('Por favor, escribe una consulta.');
+          return;
+        }
+        limpiar();
+        fetch(`http://localhost:3000/${customQuery}`, {
+          headers: { 'uid': currentUid }
+        })
+          .then(res => res.json())
+          .then(data => {
+            renderTabla(data);
+          })
+          .catch(err => {
+            console.error(err);
+            contenedor.innerHTML = '<p>Error al realizar la consulta libre.</p>';
+          });
+      });
   </script>
 </body>
 

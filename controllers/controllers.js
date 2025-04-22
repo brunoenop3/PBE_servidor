@@ -5,65 +5,100 @@ const Student = require('../models/Student');
 
 // Middleware de autenticación
 exports.authMiddleware = async (req, res, next) => {
-  const uid = req.headers['uid'];
-  if (!uid) return res.status(401).json({ error: 'Falta UID' });
+  try {
+    const uid = req.headers['uid'];
+    if (!uid) return res.status(401).json({ error: 'Falta UID' });
 
-  const student = await Student.findOne({ uid });
-  if (!student) return res.status(403).json({ error: 'UID no registrado' });
+    const student = await Student.findOne({ uid });
+    if (!student) return res.status(403).json({ error: 'UID no registrado' });
 
-  req.student = student;
-  next();
+    req.student = student;
+    next();
+  } catch (error) {
+    console.error('Error en authMiddleware:', error);
+    res.status(500).json({ error: 'Error interno de autenticación' });
+  }
 };
 
-// (público)
+// Rutas públicas
+
 exports.getTimetables = async (req, res) => {
-  const filter = parseQuery(req.query);
-  const limit = parseInt(req.query.limit) || null;
-  const data = await Timetable.find(filter)
-    .sort({ day: 1, hour: 1 })
-    .limit(limit);
-  res.json(data);
+  try {
+    const filter = parseQuery(req.query);
+    const limit = parseInt(req.query.limit) || null;
+    const data = await Timetable.find(filter).sort({ day: 1, hour: 1 }).limit(limit);
+    res.json(data);
+  } catch (error) {
+    console.error('Error en getTimetables:', error);
+    res.status(500).json({ error: 'Error interno en getTimetables' });
+  }
 };
 
-// (público)
 exports.getTasks = async (req, res) => {
-  const filter = parseQuery(req.query);
-  const tasks = await Task.find(filter).sort({ date: 1 });
-  res.json(tasks);
+  try {
+    const filter = parseQuery(req.query);
+    const tasks = await Task.find(filter).sort({ date: 1 });
+    res.json(tasks);
+  } catch (error) {
+    console.error('Error en getTasks:', error);
+    res.status(500).json({ error: 'Error interno en getTasks' });
+  }
 };
 
-//  (protegido)
+// Rutas protegidas
+
 exports.getMarks = async (req, res) => {
-  const filter = { student_uid: req.student.uid, ...parseQuery(req.query) };
-  const marks = await Mark.find(filter).sort({ subject: 1 });
-  res.json(marks);
+  try {
+    const filter = { student_uid: req.student.uid, ...parseQuery(req.query) };
+    const marks = await Mark.find(filter).sort({ subject: 1 });
+    res.json(marks);
+  } catch (error) {
+    console.error('Error en getMarks:', error);
+    res.status(500).json({ error: 'Error interno en getMarks' });
+  }
 };
 
-// GET /me (usuario autenticado)
 exports.getMe = (req, res) => {
-  res.json({ uid: req.student.uid, name: req.student.name });
+  try {
+    res.json({ uid: req.student.uid, name: req.student.name });
+  } catch (error) {
+    console.error('Error en getMe:', error);
+    res.status(500).json({ error: 'Error interno en getMe' });
+  }
 };
 
-// GET /user/:uid (público)
 exports.getUserByUid = async (req, res) => {
-  const { uid } = req.params;
-  const student = await Student.findOne({ uid });
-  if (!student) return res.status(404).json({ error: 'Usuario no encontrado' });
-  res.json({ name: student.name });
+  try {
+    const { uid } = req.params;
+    const student = await Student.findOne({ uid });
+    if (!student) return res.status(404).json({ error: 'Usuario no encontrado' });
+    res.json({ name: student.name });
+  } catch (error) {
+    console.error('Error en getUserByUid:', error);
+    res.status(500).json({ error: 'Error interno en getUserByUid' });
+  }
 };
 
-// para convertir parámetros de consulta a formato MongoDB
+// Parseador de queries
 function parseQuery(query) {
   const result = {};
+  const validOps = ['gte', 'gt', 'lte', 'lt', 'eq'];
+
   for (const key in query) {
     if (key === 'limit') continue;
+
     if (key.includes('[')) {
       const [field, op] = key.split(/\[|\]/);
+      if (!validOps.includes(op)) continue; // Ignora operadores no válidos
+
       const value = query[key] === 'now'
         ? (field === 'date' ? new Date() : undefined)
         : query[key];
-      if (!result[field]) result[field] = {};
-      result[field][`$${op}`] = value;
+
+      if (value !== undefined) {
+        if (!result[field]) result[field] = {};
+        result[field][`$${op}`] = value;
+      }
     } else {
       result[key] = query[key];
     }
