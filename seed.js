@@ -1,4 +1,3 @@
-// no se si lo necesitamos.. porque se supone que es base de datos..
 const mongoose = require('mongoose');
 const Student = require('./models/Student');
 const Task = require('./models/Task');
